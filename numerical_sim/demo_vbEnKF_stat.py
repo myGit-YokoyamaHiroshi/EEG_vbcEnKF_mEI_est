@@ -25,8 +25,9 @@ if os.path.exists(param_path)==False:  # Make the directory for figures
 import matplotlib.pylab as plt
 from matplotlib import font_manager
 import matplotlib
-font_manager.fontManager.addfont('/usr/share/fonts/truetype/msttcorefonts/arial.ttf')
-matplotlib.rc('font', family="Arial")
+if os.name != 'nt':
+    font_manager.fontManager.addfont('/usr/share/fonts/truetype/msttcorefonts/arial.ttf')
+    matplotlib.rc('font', family="Arial")
 
 plt.rcParams['font.family']      = 'Arial'
 plt.rcParams['mathtext.fontset'] = 'stix' 
@@ -53,6 +54,7 @@ def main():
     #%% load synthetic data
     fs_dwn    = 100
     Npar_list = np.arange(40, 520, 20)
+    # Npar_list = np.arange(50, 550, 50)
     Ntri      = 50
     
         
@@ -106,7 +108,7 @@ def main():
         for i in range(3):
             axn = fig.add_subplot(gs[1, i])
             axn.plot(time, eeg, label='exact', zorder=1);
-            axn.plot(time, eeg_pred[0,:],    label='estimated', zorder=2);
+            axn.plot(time[:-1], eeg_pred[0,1:],    label='estimated', zorder=2);
             axn.set_xlabel('time (s)')
             axn.set_xlim(time_range[i,:])
             axn.set_ylim(-1, 18)
@@ -138,11 +140,11 @@ def main():
     
     # plt.scatter(Npar_list, R_est_all.mean(axis=0))
     sns.violinplot(data=R_est_all, color='skyblue')
-    plt.plot([0, len(Npar_list)], [1, 1], 'r--', linewidth=2, zorder=0)
+    plt.plot([0, len(Npar_list)], [1.3, 1.3], 'r--', linewidth=2, zorder=0)
     plt.xticks(ticks=tick_idx, labels = xtick_lab)
     plt.xlabel('Num. of ensemble')
-    plt.yticks(ticks=np.arange(1, 8, 2))
-    # plt.ylim(0.5, 4)
+    # plt.yticks(ticks=np.arange(1, 8, 2))
+    # plt.ylim(1.4, 2.2)
     plt.ylabel('estimated noise covariance')
     plt.savefig(fig_save_dir + 'mean_noise_cov.png'%Npar, bbox_inches="tight")
     plt.savefig(fig_save_dir + 'mean_noise_cov.svg'%Npar, bbox_inches="tight")

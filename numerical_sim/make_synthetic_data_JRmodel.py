@@ -27,8 +27,8 @@ if os.path.exists(param_path)==False:  # Make the directory for figures
 import matplotlib.pylab as plt
 from matplotlib import font_manager
 import matplotlib
-font_manager.fontManager.addfont('/usr/share/fonts/truetype/msttcorefonts/arial.ttf')
-matplotlib.rc('font', family="Arial")
+# font_manager.fontManager.addfont('/usr/share/fonts/truetype/msttcorefonts/arial.ttf')
+# matplotlib.rc('font', family="Arial")
 
 plt.rcParams['font.family']      = 'Arial'#
 plt.rcParams['mathtext.fontset'] = 'stix' # math font setting
@@ -51,9 +51,9 @@ def sigmoid(A, k,x,x0,b):
     return (A / (1 + np.exp(-k*(x-x0)))) + b
 
 #%%
-fs          = 5000
+fs          = 100
 dt          = 1/fs
-Nt          = int(20*fs)# + 100
+Nt          = int(30*fs)# + 100
 t           = np.arange(0,Nt,1)/fs
 
 

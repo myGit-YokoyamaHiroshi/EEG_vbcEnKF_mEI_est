@@ -7,7 +7,7 @@ Created on Fri Aug 27 16:37:21 2021
 """
 from IPython import get_ipython
 from copy import deepcopy, copy
-get_ipython().magic('reset -sf')
+# get_ipython().magic('reset -sf')
 #get_ipython().magic('cls')
 
 import os
@@ -23,8 +23,10 @@ if os.path.exists(param_path)==False:  # Make the directory for figures
 import matplotlib.pylab as plt
 from matplotlib import font_manager
 import matplotlib
-font_manager.fontManager.addfont('/usr/share/fonts/truetype/msttcorefonts/arial.ttf')
-matplotlib.rc('font', family="Arial")
+
+if os.name != 'nt':
+    font_manager.fontManager.addfont('/usr/share/fonts/truetype/msttcorefonts/arial.ttf')
+    matplotlib.rc('font', family="Arial")
 
 plt.rcParams['font.family']      = 'Arial'
 plt.rcParams['mathtext.fontset'] = 'stix' 
@@ -43,6 +45,7 @@ from matplotlib.collections import LineCollection
 from scipy import signal as sig
 import numpy as np
 import joblib
+import multiprocessing as multi
 
 def est_model(eeg, time, Nstate, Nt, Npar, dt):
     from my_modules.vb_enkf_JRmodel import vbEnKF_JansenRit
@@ -53,9 +56,8 @@ def est_model(eeg, time, Nstate, Nt, Npar, dt):
     B          = 22
     b          = 50
     p          = 220
-    Q          = np.diag(np.hstack((dt * 1E-2 * np.ones(6), dt * 1E-1 * np.ones(5))))
+    Q          = np.diag(np.hstack((1E-2 * dt * np.ones(6), 1E-3 * np.ones(5))))
     R          = 50
-    eta        = 1
     
     xEst       = np.zeros(Nstate)
     PEst       = np.eye(Nstate)
@@ -72,11 +74,11 @@ def est_model(eeg, time, Nstate, Nt, Npar, dt):
     eeg_pred  = np.zeros(Nt)
     eeg_observe = eeg 
     x_pred[0,:] = xEst
-    loglike     = np.zeros(Nt)
+    ELBO        = np.zeros(Nt)
     R_save      = np.zeros(Nt)
     R_save[0]   = R
     ## initialization
-    model = vbEnKF_JansenRit(xEst, PEst, Q, R, dt, eta, Npar)
+    model = vbEnKF_JansenRit(xEst, PEst, Q, R, dt, Npar)
     
     for t in range(1,Nt):
         z = eeg_observe[t-1] 
@@ -90,7 +92,7 @@ def est_model(eeg, time, Nstate, Nt, Npar, dt):
         
         x_pred[t,:] = model.X
         eeg_pred[t] = model.zPred[0]
-        loglike[t]  = model.loglike
+        ELBO[t]     = model.elbo
         R_save[t]   = R
         if np.mod(t+1, 10)==0:
             print('#itr.: %d (R = %5.8f)'%((t+1), R))
@@ -101,42 +103,43 @@ def est_model(eeg, time, Nstate, Nt, Npar, dt):
     return eeg_pred, param_pred, R_save, Npar
 
 def main():
+    njob_max    = multi.cpu_count()
     #%% load synthetic data
-    fs_dwn    = 100
+    # fs_dwn      = 100
     Npar_list = np.arange(40, 520, 20)
-    Ntri      = 50
+    # Npar_list = np.arange(40, 60, 20)
+    Ntri        = 50
     
-    fullpath       = param_path + 'synthetic_data.npy'
-    param_dict     = np.load(fullpath, encoding='ASCII', allow_pickle='True').item()
-    eeg            = param_dict['eeg']
-    t_true         = param_dict['t']
-    fs             = param_dict['fs']
-    dt             = param_dict['dt']
+    fullpath    = param_path + 'synthetic_data.npy'
+    param_dict  = np.load(fullpath, encoding='ASCII', allow_pickle='True').item()
+    eeg         = param_dict['eeg']
+    t_true      = param_dict['t']
+    fs          = param_dict['fs']
+    dt          = param_dict['dt']
     
-    x_true         = param_dict['y']     # exact value of satate variables 1 (numerical solution of Neural mass model)
-    param_true     = param_dict['param'] # exact value of satate variables 2 (parameters of Neural mass model)
+    x_true      = param_dict['y']     # exact value of satate variables 1 (numerical solution of Neural mass model)
+    param_true  = param_dict['param'] # exact value of satate variables 2 (parameters of Neural mass model)
     
-    eeg            = eeg + np.random.normal(loc = 0, scale=1.0, size=len(eeg))
-    Nstate         = (x_true.shape[1]) + param_true.shape[1]
+    eeg         = eeg + np.random.normal(loc = 0, scale=1.3, size=len(eeg))
+    Nstate      = (x_true.shape[1]) + param_true.shape[1]
  
     
-    band           = fs_dwn/2  # Desired pass band, Hz
-    trans_width    = 0.1   # Width of transition from pass band to stop band, Hz
-    numtaps        = 6000  # Size of the FIR filter.
-    b              = sig.firwin(numtaps, cutoff = band, fs=fs, width = trans_width, window = "hanning")
-    a              = 1
-    eeg            = sig.filtfilt(b, a, eeg).T
-    eeg            = sig.resample(eeg, int(len(eeg) * (fs_dwn/fs)))
+    # band        = fs_dwn/2  # Desired pass band, Hz
+    # trans_width = 0.1   # Width of transition from pass band to stop band, Hz
+    # numtaps     = 6000  # Size of the FIR filter.
+    # b           = sig.firwin(numtaps, cutoff = band, fs=fs, width = trans_width, window = "hanning")
+    # a           = 1
+    # eeg         = sig.filtfilt(b, a, eeg).T
+    # eeg         = sig.resample(eeg, int(len(eeg) * (fs_dwn/fs)))
     
-    Nt             = len(eeg)
-    dt             = 1/fs_dwn
-    time           = np.arange(0,Nt,1)/fs_dwn
+    # Nt          = len(eeg)
+    # dt          = 1/fs_dwn
+    # time        = np.arange(0,Nt,1)/fs_dwn
     
-    # Nt             = len(eeg)
-    # dt             = 1/fs
-    # time           = np.arange(0,Nt,1)/fs
+    Nt          = len(eeg)
+    dt          = 1/fs
+    time        = np.arange(0,Nt,1)/fs
     
-    eeg            = eeg #+ np.random.normal(loc = 0, scale=1.0, size=Nt)
     #%%
     
     print(__file__ + " start!!")
@@ -148,7 +151,7 @@ def main():
             os.makedirs(fig_save_dir)
         
         np.random.seed(0)
-        processed  = joblib.Parallel(n_jobs=-1, verbose=5)(joblib.delayed(est_model)(eeg, time, Nstate, Nt, Npar, dt) for i in range(Ntri))
+        processed  = joblib.Parallel(n_jobs=int(0.8*njob_max), verbose=5)(joblib.delayed(est_model)(eeg, time, Nstate, Nt, Npar, dt) for i in range(Ntri))
         #%%
         eeg_pred   = np.array([processed[i][0] for i in range(len(processed))])
         param_pred = np.array([processed[i][1] for i in range(len(processed))])
@@ -166,7 +169,8 @@ def main():
         plt.hist(R_save[:,-1])
         plt.xlabel('noise covariance')
         plt.ylabel('frequency')
-        plt.xlim(0.5, 2)
+        plt.xlim(0.5, 3)
+        # plt.xlim(1.5, 3)
         plt.show()
         #%%    
         fig_name = ['A', 'a', 'B', 'b', 'p']
@@ -180,7 +184,6 @@ def main():
             fig, ax = plt.subplots()
             
             lines = [np.column_stack([time, param_pred[j,:,i]]) for j in range(Ntri)]
-            
             
             lc = LineCollection(lines, cmap='Blues', linewidth=1)
             lc.set_array(np.arange(0, Ntri))
