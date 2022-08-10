@@ -8,23 +8,25 @@ Created on Wed Sep  1 10:49:09 2021
 
 import numpy as np
 from copy import deepcopy
-from scipy.linalg import sqrtm, cholesky
-
+from scipy.linalg import sqrtm, cholesky, lu
+from scipy.special import gamma, digamma, gammaln
+from numpy.linalg import slogdet
 
 class vbEnKF_JansenRit:
-    def __init__(self, X, P, Q, R, dt, eta):
+    def __init__(self, X, P, Q, R, dt, Npar=200):
         ###############
         self.X     = X
         self.P     = P
         self.Q     = Q
         self.R     = R
         self.dt    = dt
-        self.Npar  = 200
-        self.a0    = 1
-        self.b0    = 0.5
-        self.eta   = eta # forgetting factor
+        self.Npar  = Npar
+        # self.a0    = 1
+        # self.b0    = 0.5
+        self.a0    = 1E-3
+        self.b0    = 1E-3
         
-        self.a     = self.a0 + 1/2
+        self.a     = self.a0# + 1/2
         self.b     = self.b0
     
     def Sigm(self, v):
@@ -99,6 +101,16 @@ class vbEnKF_JansenRit:
         
         return X_next
     
+    
+    def inv_lu(self, X):
+        p,l,u = lu(X, permute_l = False)
+        l     = np.dot(p,l) 
+        l_inv = np.linalg.inv(l)
+        u_inv = np.linalg.inv(u)
+        X_inv = np.dot(u_inv,l_inv)
+        
+        return X_inv
+
     ###################
     def predict(self):
         X       = self.X
@@ -108,25 +120,23 @@ class vbEnKF_JansenRit:
         Npar    = self.Npar
         Nstate  = len(X)
         
-        a       = self.a
-        b       = self.b
-        eta     = self.eta
         
-        X_sgm   = np.random.multivariate_normal(mean=X, cov=P, size=Npar)
-        
-        X_sgm   = np.array([self.state_func(X_sgm[i,:6], X_sgm[i,6:]) for i in range(Npar)])
+        x_sgm   = np.random.multivariate_normal(mean=X, cov=P, size=Npar)
+        v       = np.random.multivariate_normal(mean=np.zeros(len(X)), cov=Q, size=Npar)
+        X_sgm   = np.array([self.state_func(x_sgm[i,:6], x_sgm[i,6:]) + v[i] for i in range(Npar)])
         XPred   = np.mean(X_sgm, axis=0)  
         
-        dx      = X_sgm.T - X[:, np.newaxis]
-        PPred   = ((dx @ dx.T)/(Npar-1)) + Q
+        self.X_sgm_ = x_sgm
+        self.X_     = X
+        self.P_     = P
         
-        self.X     = XPred
-        self.P     = PPred
-        self.X_sgm = X_sgm
-        self.a     = eta * a
-        self.b     = eta * b
+        dx          = X_sgm.T - XPred[:, np.newaxis]
+        PPred       = ((dx @ dx.T)/(Npar-1)) + Q
+        
+        self.X      = XPred
+        self.P      = PPred
+        self.X_sgm  = X_sgm
     
-
     def update(self):
         z     = self.z
         X     = self.X
@@ -139,7 +149,6 @@ class vbEnKF_JansenRit:
         b     = self.b
         
         eta   = b/a
-        
         
         D     = np.array([
                           [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
@@ -154,11 +163,9 @@ class vbEnKF_JansenRit:
         
         H     = np.array([[0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0]])
         ################
-        X_sgm = np.random.multivariate_normal(mean=X, cov=P, size=Npar)        
         z_sgm = H @ X_sgm.T 
         zPred = np.mean(z_sgm ,axis=1)  
         y     = z - zPred # prediction error of observation model
-        
         
         #################################################################
         dx      = X_sgm.T - X[:, np.newaxis]
@@ -173,9 +180,7 @@ class vbEnKF_JansenRit:
         X_new   = np.mean(X_sgm.T + K@(z + w - z_sgm),axis=1)
         P_new   = P - K @ Pzz @ K.T
         
-        # a         = a + 1/2
-        b         = b + 1/2 * ((z - (H@X_new))**2)/R + 1/2 * np.trace((H@P_new@H.T)/R)
-        # print(b)
+        b       = b + 1/2 * ((z - (H@X_new))**2)/R + 1/2 * np.trace((H@P_new@H.T)/R)
         ##### inequality constraints ##########################################
         ###   Constraint would be applied only when the inequality condition is not satisfied.
         I     = np.eye(len(X_new))
@@ -195,21 +200,39 @@ class vbEnKF_JansenRit:
                 X_new[i+6] = X_c[i+6]
         ##### inequality constraints ##########################################
         
-        ### log-likelihood
-        _, logdet = np.linalg.slogdet(Pzz)
-        loglike   = (-0.5 * (np.log(2*np.pi) + logdet + np.dot(y, Pzz_inv).dot(y))).reshape(-1)[0]
+        ####### loglike
+        logdetR    = np.log(R)
+        s, logdetP = slogdet(P)
+        P_inv      = np.linalg.inv(P)
+        err        = z - H @ X
+        mu         = X_new - X#
+        Nstate     = len(X)
+        N          = len(zPred)
+        
+        loglike    = -0.5 * (     N * np.log(2*np.pi) + np.log(eta*R) + a/b * np.sum(err**2)/R) \
+                     -0.5 * (Nstate * np.log(2*np.pi) + logdetP + mu.T @ P_inv @ mu)
+        ####### elbo
+        ll_state   = 1/2 * (-Nstate * np.log(2*np.pi) - logdetP - np.trace(P_inv@P))
+        ll_obs     = 1/2 * (-N * np.log(2*np.pi) +  (digamma(a) - np.log(b)) - logdetR - a/b * ((np.sum(err**2/R)) + np.trace((H@P@H.T)/R)))
+        ll_gamma   = (self.a-1)* (digamma(a)-np.log(b))-gammaln(self.a)+self.a*np.log(self.b)-self.b*(a/b)
+
+        Hx         = Nstate/2 * (1 + np.log(2*np.pi)) + 1/2 * logdetP
+        Heta       = a - np.log(b) + gammaln(a) + (1-a) * digamma(a)
+        
+        ELBO       = ll_state + ll_obs + ll_gamma + Hx + Heta
         
         
         self.X       = X_new
         self.P       = P_new
         self.zPred   = zPred
         self.S       = Pzz
-        self.loglike = loglike
+        self.elbo = ELBO
         self.a       = a
         self.b       = b
     
     def vbenkf_estimation(self, z):   
         self.z = z
+
         # Prediction step (estimate state variable)
         self.predict()
         

@@ -27,8 +27,9 @@ if os.path.exists(param_path)==False:  # Make the directory for figures
 import matplotlib.pylab as plt
 from matplotlib import font_manager
 import matplotlib
-font_manager.fontManager.addfont('/usr/share/fonts/truetype/msttcorefonts/arial.ttf')
-matplotlib.rc('font', family="Arial")
+if os.name == 'posix': # for linux
+    font_manager.fontManager.addfont('/usr/share/fonts/truetype/msttcorefonts/arial.ttf')
+    matplotlib.rc('font', family="Arial")
 
 plt.rcParams['font.family']      = 'Arial'#
 plt.rcParams['mathtext.fontset'] = 'stix' # math font setting
@@ -37,7 +38,6 @@ plt.rcParams["font.size"]        = 26 # Font size
 import sys
 sys.path.append(current_path)
 
-from my_modules.vb_ukf_JRmodel import vbUKF_JansenRit
 from my_modules.preprocessing import Preprocessing
 from tqdm import tqdm, trange
 from scipy import signal as sig
@@ -230,7 +230,8 @@ for sbjID in list_sbj:
     
     for st in idx_order:
         idx = np.where(idx_order==st)[0]
-        EIave_state[cnt, idx] = np.mean(EIR[(state==st) & (time>=-900)])
+        # EIave_state[cnt, idx] = np.mean(EIR[(state==st) & (time>=-900)])
+        EIave_state[cnt, idx] = np.nanmean(EIR[(state==st)])
     print(sbjID)    
     cnt += 1
 #%%
