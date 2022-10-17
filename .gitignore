@@ -1,2 +1,2 @@
 /sleepEEG_analysis/raw_data/.goutputstream-EDOJJ1
-/sleepEEG_analysis/raw_data/*.edf
+/sleepEEG_analysis/raw_data/*.npy
