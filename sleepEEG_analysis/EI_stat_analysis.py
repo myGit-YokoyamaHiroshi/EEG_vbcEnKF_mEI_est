@@ -141,8 +141,6 @@ for sbjID in list_sbj:
     R            = datadict['R']
     
     REM_st       = datadict['idx_REM_st']
-    time[REM_st] = datadict['t_REM_st']  # unit: s
-    # datadict['paramInit']
     #%%
     fig = plt.figure(figsize=(14, 7))
     gs  = fig.add_gridspec(2,3)
@@ -151,7 +149,7 @@ for sbjID in list_sbj:
     
     ax1 = fig.add_subplot(gs[0, 0:3])
     ax1.plot(time/60, eeg_obs, label='exact', zorder=1);
-    ax1.plot(time[1:]/60, eeg_pred[:-1], '--', label='estimated', zorder=2);
+    ax1.plot(time[1:]/60, eeg_pred[:-1], '--', label='estimated', zorder=2, alpha=0.8);
     ax1.set_xlabel('time (min)')
     ax1.set_ylabel('amplitude ($\\mu V$)')
     ax1.set_xlim(-10, time[-1]/60)
@@ -167,7 +165,7 @@ for sbjID in list_sbj:
     for i in range(3):
         axn = fig.add_subplot(gs[1, i])
         axn.plot(time/60, eeg_obs, label='exact', zorder=1);
-        axn.plot(time[1:]/60, eeg_pred[:-1], '--', label='estimated', zorder=2);
+        axn.plot(time[1:]/60, eeg_pred[:-1], '--', label='estimated', zorder=2, alpha=0.8);
         axn.set_xlabel('time (min)')
         
         axn.plot([0,0], [-300, 300], 'r', linestyle='--', linewidth=4, zorder=4)
@@ -188,7 +186,7 @@ for sbjID in list_sbj:
     win          = 0.5# unit s
     EIR          = param_pred[:,0]/(param_pred[:,0] + param_pred[:,2]) # = A/B
     
-    EIRsm = moving_average(EIR, int(fs*10))
+    # EIRsm = moving_average(EIR, int(fs*10))
     
     fig = plt.figure(figsize=(8, 10))
     gs  = fig.add_gridspec(3, 1)
@@ -196,7 +194,7 @@ for sbjID in list_sbj:
     
     ax1 = fig.add_subplot(gs[0:2, 0])
     ax1.plot(time/60, EIR, zorder=1, label='EI ratio')
-    ax1.plot(time[int(fs*10)-1:]/60, EIRsm, zorder=2, label='EI ratio (smooth)')
+    # ax1.plot(time[int(fs*10)-1:]/60, EIRsm, zorder=2, label='EI ratio (smooth)')
     # ax1.errorbar(t_epc, EIR_epc, yerr=SD_epc, 
     #              marker='o', mfc='black', ms=5, linestyle='-', 
     #              zorder=2)
@@ -207,7 +205,7 @@ for sbjID in list_sbj:
     # plt.xlim(-21, time[-1]/60)
     ax1.set_xticklabels([])
     ax1.set_ylabel('mean E/I ratio (a.u.)')
-    ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0)
+    # ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0)
     plt.grid()
     #######################
     ax2 = fig.add_subplot(gs[2, 0])
@@ -230,7 +228,6 @@ for sbjID in list_sbj:
     
     for st in idx_order:
         idx = np.where(idx_order==st)[0]
-        # EIave_state[cnt, idx] = np.mean(EIR[(state==st) & (time>=-900)])
         EIave_state[cnt, idx] = np.nanmean(EIR[(state==st)])
     print(sbjID)    
     cnt += 1
@@ -258,34 +255,9 @@ state_idx = state_idx.reshape(-1)
 
 subject   = np.tile(list_sbj, (5, 1)).T
 subject   = subject.reshape(-1)
-#%%
-df = pd.DataFrame({'state': state_idx, 'subject': subject, 'score':EIave_state.reshape(-1)})
-twoway_anova = smf.ols(formula='score ~ state', data=df).fit()
-table_anova = sm.stats.anova_lm(twoway_anova, typ=1)
-table_tukey = pairwise_tukeyhsd(df.score, df.state)
-
-SSeffect    = table_anova.sum_sq['state']
-SSerror     = table_anova.sum_sq['Residual']
-SStotal     = SSeffect + SSerror
-par_eta_sq  = SSeffect/SStotal
-cohenf      = np.sqrt(SSeffect/SSerror)
-
-
-df_anova = pd.DataFrame(table_anova)
-df_tukey = pd.DataFrame(table_tukey.summary())
-
-df_anova['effect size'] =  [par_eta_sq, np.nan]
-
-df_anova.to_csv('anova_result.csv')
-df_tukey.to_csv('tukey_result.csv')
-
-print('\n')
-print(df_anova)
-print('\n')
-print(df_tukey)
 #%% Kruskal-Wallis one-way analysis (nonparametric one-way anova) and multiple comparison
 EIave_vec          = EIave_state.reshape(-1)
-table_kruskal      = stats.kruskal(EIave_vec[state_idx=='awake'], EIave_vec[state_idx=='stage 1'], EIave_vec[state_idx=='stage 2'], EIave_vec[state_idx=='stage 3/4'], EIave_vec[state_idx=='REM'])
+table_kruskal      = stats.kruskal(EIave_vec[state_idx=='Awake'], EIave_vec[state_idx=='Stage 1'], EIave_vec[state_idx=='Stage 2'], EIave_vec[state_idx=='Stage 3/4'], EIave_vec[state_idx=='REM'], nan_policy='omit')
 df_kruskal         = pd.DataFrame(table_kruskal)
 df_kruskal.index   = ['statistic', 'pvalue']
 df_kruskal.columns = ['Kruskal-Wallis test']
