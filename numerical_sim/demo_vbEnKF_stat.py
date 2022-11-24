@@ -133,12 +133,30 @@ def main():
         
         ax = fig.add_subplot(gs[0, 0:])
         ax.plot(time, mEI_true, color='#1f77b4', label='exact', zorder=2, alpha=0.7, linewidth=2.5);
-        ax.plot(time, mEI_pred.T, color='#ff7f0e', label='estimated', zorder=1, alpha=0.7, linewidth=1.5);
+        lines = [np.column_stack([time, mEI_pred[j,:]]) for j in range(Ntri)]
+        lc = LineCollection(lines, cmap='autumn', linewidth=1.5)
+        lc.set_array(np.arange(0, Ntri))
+        lc.set_alpha(0.5)
+        line = ax.add_collection(lc) #add to the subplot
+        # ax.plot(time, mEI_pred.T, color='#ff7f0e', label='estimated', zorder=1, alpha=0.7, linewidth=1.5);
         ax.set_xlabel('time (s)')
         ax.set_ylabel('amplitude (a.u.)')
         ax.set_ylim(0.05, 0.4)
-        ax.legend(['exact', 'estimated'],bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0, fontsize=26, frameon=False)
+        ax.legend(['exact'],bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0, fontsize=26, frameon=False)
         ax.set_title('mEI ratio\n$mEI = A(t)/(A(t)+B(t))$')
+        
+        # add color bar below main figure panel
+        ax_cb = fig.add_subplot(gs[1, 1:3])
+        divider = make_axes_locatable(ax_cb)
+        cax = divider.new_vertical(size='10%', pad=0.5, pack_start = True)
+        fig.add_axes(cax)
+        fig.colorbar(line, cax = cax, label='Num. of trial',  orientation='horizontal')
+        ax_cb.tick_params(axis='x', colors='white') #setting up X-axis tick color to white
+        ax_cb.tick_params(axis='y', colors='white') #setting up Y-axis tick color to white
+        ax_cb.spines['bottom'].set_color('white')
+        ax_cb.spines['top'].set_color('white')
+        ax_cb.spines['left'].set_color('white')
+        ax_cb.spines['right'].set_color('white')
         
         ### parameter A
         ax = fig.add_subplot(gs[2, 0:2])
@@ -215,11 +233,9 @@ def main():
         # add color bar below main figure panel
         ax_cb = fig.add_subplot(gs[5, 1:3])
         divider = make_axes_locatable(ax_cb)
-        cax = divider.new_vertical(size='10%', pad=1.0, pack_start = True)
+        cax = divider.new_vertical(size='10%', pad=0.5, pack_start = True)
         fig.add_axes(cax)
         fig.colorbar(line, cax = cax, label='Num. of trial',  orientation='horizontal')
-        ax_cb.xaxis.label.set_color('white')        #setting up X-axis label color to white
-        ax_cb.yaxis.label.set_color('white')        #setting up Y-axis label color to white
         ax_cb.tick_params(axis='x', colors='white') #setting up X-axis tick color to white
         ax_cb.tick_params(axis='y', colors='white') #setting up Y-axis tick color to white
         ax_cb.spines['bottom'].set_color('white')

@@ -147,9 +147,9 @@ for sbjID in list_sbj:
     plt.subplots_adjust(wspace=0.4, hspace=0.1)
     
     ax1 = fig.add_subplot(gs[0:2, 0])
-    ax1.plot(time/60, EIslope)
-    ax1.plot([0,0], [-300, 300], 'r', linestyle='--', linewidth=4, zorder=0)
-    ax1.axvspan(time[REM_st]/(60), time[-1]/(60), color='gray', alpha=0.3)
+    ax1.plot(time/60, EIslope, zorder=1)
+    ax1.plot([0,0], [-300, 300], 'r', linestyle='--', linewidth=4, zorder=2)
+    ax1.axvspan(time[REM_st]/(60), time[-1]/(60), color='gray', alpha=0.3, zorder=0)
     ax1.set_xlim(time[0]/60, time[-1]/60)
     ax1.set_ylim(-40, 30)
     # plt.xlim(-21, time[-1]/60)
@@ -240,7 +240,10 @@ plt.subplots_adjust(wspace=0.4, hspace=0.8)
     
     
 ax1 = fig.add_subplot(gs[0, 0])
-sns.violinplot(data=EIave_state, color='skyblue')
+# sns.violinplot(data=EIave_state, color='skyblue')
+plt.violinplot([val[np.isnan(val)==False]  for val in EIave_state.T], 
+               positions=np.arange(0,len(state_list)), 
+               showextrema=True, showmedians=True)
 sns.stripplot(data=EIave_state, jitter=True, color='blue')
 ax1.set_xticks(ticks=np.arange(5))
 ax1.set_xticklabels(state_list, rotation=45)

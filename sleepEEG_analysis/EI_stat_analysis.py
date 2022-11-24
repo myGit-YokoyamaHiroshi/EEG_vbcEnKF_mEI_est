@@ -43,6 +43,7 @@ from tqdm import tqdm, trange
 from scipy import signal as sig
 from statsmodels.graphics.gofplots import qqplot 
 from scipy.stats import norm, uniform 
+from matplotlib.collections import LineCollection
 import scipy.linalg
 import math
 import seaborn as sns
@@ -147,33 +148,39 @@ for sbjID in list_sbj:
     plt.subplots_adjust(wspace=0.6, hspace=0.8)
     
     
+    time_range = np.array([[-0.05,  0.05],
+                           [(time[REM_st]/2)/60 - 0.05, (time[REM_st]/2)/60 + 0.05],
+                           [time[REM_st]/60 - 0.05, time[REM_st]/60 + 0.05]
+                           ])
+    
     ax1 = fig.add_subplot(gs[0, 0:3])
-    ax1.plot(time/60, eeg_obs, label='exact', zorder=1);
-    ax1.plot(time[1:]/60, eeg_pred[:-1], '--', label='estimated', zorder=2, alpha=0.8);
+    
+    ax1.plot(time/60, eeg_obs, label='exact', zorder=1, alpha=0.7);
+    ax1.plot(time[1:]/60, eeg_pred[:-1], label='predicted', zorder=2, alpha=0.7);
     ax1.set_xlabel('time (min)')
     ax1.set_ylabel('amplitude ($\\mu V$)')
-    ax1.set_xlim(-10, time[-1]/60)
-    ax1.set_ylim(-200, 200)
+    ax1.set_xlim(-20, time[-1]/60)
+    ax1.set_ylim(-220, 220)
     ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0, fontsize=26, frameon=False)
-    ax1.plot([0,0], [-300, 300], 'r', linestyle='--', linewidth=4, zorder=4)
     ax1.axvspan(time[REM_st]/(60), time[-1]/(60), color='gray', alpha=0.3, zorder=3)
+    ax1.plot([0,0], [-300, 300], 'r', linestyle='--', linewidth=4, zorder=4)
+    
+    ax1.plot(time_range.T, [-218,-218], linewidth=6, zorder=5, c='k')
+    
     ############
-    time_range = np.array([[-0.1,  0.1],
-                           [(time[REM_st]/2)/60 - 0.1, (time[REM_st]/2)/60 + 0.1],
-                           [time[REM_st]/60 - 0.1, time[REM_st]/60 + 0.1]
-                           ])
+    
     for i in range(3):
         axn = fig.add_subplot(gs[1, i])
-        axn.plot(time/60, eeg_obs, label='exact', zorder=1);
-        axn.plot(time[1:]/60, eeg_pred[:-1], '--', label='estimated', zorder=2, alpha=0.8);
+        axn.plot(time/60, eeg_obs, label='exact', zorder=1, linewidth=1.5, alpha=0.7);
+        axn.plot(time[1:]/60, eeg_pred[:-1], label='predicted', zorder=2, alpha=0.7, linewidth=1.5);
         axn.set_xlabel('time (min)')
         
         axn.plot([0,0], [-300, 300], 'r', linestyle='--', linewidth=4, zorder=4)
         axn.axvspan(time[REM_st]/(60), time[-1]/(60), color='gray', alpha=0.3, zorder=3)
         
         axn.set_xlim(time_range[i,:])
-        axn.set_ylim(-100, 100)
-        axn.set_xticks(np.arange(time_range[i,0], time_range[i,1]+0.09, 0.1))
+        axn.set_ylim(-90, 90)
+        # axn.set_xticks(np.arange(time_range[i,0], time_range[i,1]+0.09, 0.1))
         if i == 0:
             axn.set_ylabel('amplitude ($\\mu V$)')
     #######
@@ -200,7 +207,7 @@ for sbjID in list_sbj:
     #              zorder=2)
     ax1.plot([0,0], [-300, 300], 'r', linestyle='--', linewidth=4, zorder=4)
     ax1.axvspan(time[REM_st]/(60), time[-1]/(60), color='gray', alpha=0.3, zorder=3)
-    ax1.set_xlim(-10, time[-1]/60)
+    ax1.set_xlim(-20, time[-1]/60)
     ax1.set_ylim(-0.05, 1.0)
     # plt.xlim(-21, time[-1]/60)
     ax1.set_xticklabels([])
@@ -216,7 +223,7 @@ for sbjID in list_sbj:
     ax2.set_yticks([-3, -2, -1, 0, 1], )
     ax2.set_yticklabels(['Stage 3/4', 'Stage 2', 'Stage 1', 'REM', 'Awake'])
     ax2.set_xlabel('time (min)')
-    ax2.set_xlim(-10, time[-1]/60)#set_xlim(-3, time[-1]/60)
+    ax2.set_xlim(-20, time[-1]/60)#set_xlim(-3, time[-1]/60)
     ax2.set_ylim(-3.5, 1.5)
     plt.grid()
     ########
@@ -290,7 +297,10 @@ plt.subplots_adjust(wspace=0.4, hspace=0.8)
     
     
 ax1 = fig.add_subplot(gs[0, 0])
-sns.violinplot(data=EIave_state, color='skyblue')
+# sns.violinplot(data=EIave_state, color='skyblue', inner=None)
+plt.violinplot([val[np.isnan(val)==False]  for val in EIave_state.T], 
+               positions=np.arange(0,len(state_list)), 
+               showextrema=True, showmedians=True)
 sns.stripplot(data=EIave_state, jitter=True, color='blue')
 ax1.set_xticks(ticks=np.arange(5))
 ax1.set_xticklabels(state_list, rotation=45)
