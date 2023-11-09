@@ -1,9 +1,8 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Wed Mar 16 09:52:33 2022
+Created on Tue Nov  7 21:51:03 2023
 
-@author: Hiroshi Yokoyama
+@author: H.Yokoyama
 """
 
 fdir = __file__ 
@@ -53,55 +52,41 @@ import random
 
 import pyedflib
 #%%
-def moving_average(x, w):
-    return np.convolve(x, np.ones(w), 'valid') / w
-
-def epoch_average(time, value, win):
-    td       = np.mean(time[1:]-time[:-1])
-    t_epc    = np.arange(time[0], time[-1], win)
-    interval = np.concatenate((t_epc[:-1, np.newaxis], t_epc[1:, np.newaxis]), axis=1)
-    Nepc     = interval.shape[0]
+def plot_p_matrix(pmat, ax, mask=None):
     
-    ave_epc  = np.zeros(Nepc)
-    sd_epc   = np.zeros(Nepc)
-    for epc in range(Nepc):
-        idx          = np.where((time>interval[epc,0]) & (time<=interval[epc,1]))[0]
-        ave_epc[epc] = np.nanmean(value[idx])
-        sd_epc[epc]  = np.nanstd(value[idx])
-    
-    t_epc = t_epc[1:]
-    return t_epc, ave_epc, sd_epc
-
-def my_progress_bar(t, Nt):
-    bar_template = "\r{0}%[{1}] {2}/{3}"
-    bar = "#" * round((t/Nt)*100) + " " * (100 - round((t/Nt)*100))
-    print(bar_template.format(round((t/Nt)*100), bar, t, Nt), end="")
-    
-    
-def plot_cor_matrix(corr, ax, mask=None):
-    # f, ax = plt.subplots(figsize=(12, 9))
-    
-    # corr[corr>0.05] = 1
-    
-    s = sns.heatmap(corr, ax=ax,
+    s = sns.heatmap(pmat, ax=ax,
                    mask=mask,
-                   # cosmetics
                    vmin=0, vmax=1, center=0,
                    cmap='copper', linewidths=1, linecolor='black', 
                    cbar_kws={'orientation': 'vertical', 'label': '$p$-value (Bonferroni-corrected)'})
     s.set_xticklabels(s.get_xticklabels(), rotation =45)
     
-    N, M = df_dnn.shape
+    N, M = pmat.shape
     
     for i in range(N):
         for j in range(i, N):
             if i != j:
-                if (np.isnan(corr.values[i,j])) or (corr.values[i,j]>0.05):
-                    plt.text(i+0.5, j+0.5,'n.s.', va='center', ha='center')
+                if (np.isnan(pmat.values[i,j])) or (pmat.values[i,j]>0.05):
+                    plt.text(i+0.5, j+0.5,'$%.4f$\n(n.s.)'%pmat.values[i,j], va='center', ha='center')
                 else:
-                    plt.text(i+0.5, j+0.5,'%.4f'%corr.values[i,j], va='center', ha='center')
+                    plt.text(i+0.5, j+0.5,'$%.4f^{*}$\n'%pmat.values[i,j], va='center', ha='center')
     
-    # return f, ax
+
+def plot_effectsize_matrix(ef_mat, pmat, ax, mask=None):
+    
+    s = sns.heatmap(ef_mat, ax=ax,
+                   mask=mask,
+                   vmin=0, vmax=.3, #center=.2,
+                   cmap='Reds', linewidths=1, linecolor='black', 
+                   cbar_kws={'orientation': 'vertical', 'label': 'pairwise effect size (Cramer\'s $\phi^2$)'})
+    s.set_xticklabels(s.get_xticklabels(), rotation =45)
+    
+    N, M = ef_mat.shape
+    
+    for i in range(N):
+        for j in range(i, N):
+            if i != j:
+                plt.text(i+0.5, j+0.5,'%.4f'%ef_mat.values[i,j], va='center', ha='center')
 
 ############################################################################## 
 #%% check the directory and get the file name automatically
@@ -154,7 +139,7 @@ for sbjID in list_sbj:
     ax1.set_ylim(-40, 30)
     # plt.xlim(-21, time[-1]/60)
     ax1.set_xticklabels([])
-    ax1.set_ylabel('mean E/I slope (a.u.)')
+    ax1.set_ylabel('E/I slope (a.u.)')
     plt.grid()
     
     ###########
@@ -192,12 +177,9 @@ plt.show()
 
 
 #%%
-import statsmodels.formula.api as smf
-import statsmodels.api as sm
 import pandas as pd
 from scipy import stats
-from statsmodels.stats.multicomp import pairwise_tukeyhsd
-import scikit_posthocs as sp
+from my_modules.dunn import  my_posthoc_dunn
 
 state_idx = np.tile(np.array(['Awake', 'Stage 1', 'Stage 2', 'Stage 3/4', 'REM']), (len(list_sbj),1))
 state_idx = state_idx.reshape(-1)
@@ -215,10 +197,20 @@ df_kruskal.columns = ['Kruskal-Wallis test']
 
 state_list = ['Awake', 'Stage 1', 'Stage 2', 'Stage 3/4', 'REM']
 data = [list(EIave_vec[state_idx==state_list[i]],) for i in range(len(state_list))]
-table_dnn      = sp.posthoc_dunn(data, p_adjust = 'bonferroni')
-df_dnn         = pd.DataFrame(table_dnn)
+
+df_dnn, df_dnn_stat, df_dnn_effect = my_posthoc_dunn(data, p_adjust = 'bonferroni')
 df_dnn.index   = state_list
 df_dnn.columns = state_list
+
+df_dnn_stat.index   = state_list
+df_dnn_stat.columns = state_list
+
+df_dnn_effect.index   = state_list
+df_dnn_effect.columns = state_list
+# table_dnn      = sp.posthoc_dunn(data, p_adjust = 'bonferroni')
+# df_dnn         = pd.DataFrame(table_dnn)
+# df_dnn.index   = state_list
+# df_dnn.columns = state_list
 
 n              = len(list_sbj)*len(state_list)
 k              = len(state_list)
@@ -228,19 +220,20 @@ df_kruskal.loc['effect size'] =  eta_sq
 
 df_kruskal.to_csv('kruskal_result_gao.csv')
 df_dnn.to_csv('dnn_result_gao.csv')
+df_dnn_effect.to_csv('dnn_result_effectsize_gao.csv')
+df_dnn_stat.to_csv('dnn_result_stats_gao.csv')
 
 print('--------------')
 print(df_kruskal)
 print('')
 print(df_dnn)
 #%%
-fig = plt.figure(figsize=(26,9))
-gs  = fig.add_gridspec(1,2)
+fig = plt.figure(figsize=(40,9))
+gs  = fig.add_gridspec(1,3)
 plt.subplots_adjust(wspace=0.4, hspace=0.8)
     
     
 ax1 = fig.add_subplot(gs[0, 0])
-# sns.violinplot(data=EIave_state, color='skyblue')
 plt.violinplot([val[np.isnan(val)==False]  for val in EIave_state.T], 
                positions=np.arange(0,len(state_list)), 
                showextrema=True, showmedians=True)
@@ -248,10 +241,13 @@ sns.stripplot(data=EIave_state, jitter=True, color='blue')
 ax1.set_xticks(ticks=np.arange(5))
 ax1.set_xticklabels(state_list, rotation=45)
 ax1.set_ylabel('mean of E/I slope')
-# ax1.set_ylim(-0.1, 1.0)
 
 ax2 = fig.add_subplot(gs[0, 1])
-plot_cor_matrix(df_dnn, ax2, mask=np.triu(df_dnn));
+plot_p_matrix(df_dnn, ax2, mask=np.triu(df_dnn));
+
+ax3 = fig.add_subplot(gs[0, 2])
+plot_effectsize_matrix(df_dnn_effect, df_dnn, ax3, mask=np.triu(df_dnn_effect));
+
 figname = fig_save_dir + 'stats_result_gao'
 plt.savefig(figname + '.png', bbox_inches="tight")
 plt.savefig(figname + '.svg', bbox_inches="tight")
