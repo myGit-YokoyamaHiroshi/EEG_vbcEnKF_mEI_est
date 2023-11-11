@@ -25,10 +25,15 @@ year = {2022}
 }
 ```
 ```
-@software{EEG_vbcEnKF_mEI_est,
-  author = {Yokoyana H.},
-  title = {EEG_vbcEnKF_mEI_est},
-  url = {https://github.com/myGit-YokoyamaHiroshi/EEG_vbcEnKF_mEI_est},
-  year = {2022}
+@software{Yokoyama2023,
+  author       = {Hiroshi Yokoyama},
+  title        = {{myGit-YokoyamaHiroshi/EEG\_vbcEnKF\_mEI\_est: 
+                   new\_release}},
+  month        = nov,
+  year         = 2023,
+  publisher    = {Zenodo},
+  version      = {new\_release},
+  doi          = {10.5281/zenodo.10109709},
+  url          = {https://doi.org/10.5281/zenodo.10109709}
 }
 ```
