@@ -1,4 +1,5 @@
 # EEG_vbcEnKF_mEI_est
+[![DOI](https://zenodo.org/badge/493167193.svg)](https://zenodo.org/doi/10.5281/zenodo.10109708)
 There are sample scripts of model baseed E/I balance estimation method using vbEnKF in Neural mass model with parameter constraint.
 <br>
 <img src="./GraphicalAbstract.png" width=100%>
