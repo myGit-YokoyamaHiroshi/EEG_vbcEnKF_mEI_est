@@ -9,7 +9,7 @@ There are sample scripts of model baseed E/I balance estimation method using vbE
 &ensp;&ensp;(Division of Neural Dynamics, Department of System Neuroscience, National Institute for Physiological Sciences, Japan)<br>
 
 # References<br>
-Yokoyama, H., Kitajo, K. A data assimilation method to track excitation-inhibition balance change using scalp EEG. Communications Engineering 2, 92 (2023). https://doi.org/10.1038/s44172-023-00143-7
+Yokoyama, H., Kitajo, K. A data assimilation method to track excitation-inhibition balance change using scalp EEG. Communications Engineering, 2, 92 (2023). https://doi.org/10.1038/s44172-023-00143-7
 
 
 # Cite<br>
